@@ -1,0 +1,2 @@
+includes: ['layer:nginx', 'interface:upstream']
+repo: git@github.com:tengu-team/layer-nginx-api-gateway.git

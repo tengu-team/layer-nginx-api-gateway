@@ -1,0 +1,13 @@
+name: nginx-api-gateway
+summary: Installs a NGINX api gateway
+maintainers:
+  - Sander Borny <sander.borny@ugent.be>
+description: |
+  Installs a NGINX api gateway
+tags:
+  - misc
+subordinate: false
+requires:
+  upstream:
+    interface: upstream
+series: ['xenial']

@@ -1,0 +1,6 @@
+options:
+  exact-server-names:
+    type: boolean
+    default: True
+    description: |
+      If True, NGINX will return 404 if no server_name is matched.
