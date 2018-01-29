@@ -47,11 +47,11 @@ def upstream_changed():
         return
     clean_nginx()
     for upstream in upstreams:
-        if not upstream['vhost']:
+        if not upstream['nginx_config']:
             continue
         unit = upstream['remote_unit_name'].split('/')[0]
         with open('/etc/nginx/sites-available/' + unit, 'w+') as f:
-            f.write(upstream['vhost'])
+            f.write(upstream['nginx_config'])
     # Create symb links to /sites-enabled
     for file in os.listdir('/etc/nginx/sites-available'):
         os.symlink('/etc/nginx/sites-available/' + file, '/etc/nginx/sites-enabled/' + file)
