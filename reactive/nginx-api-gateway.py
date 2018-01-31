@@ -62,12 +62,25 @@ def upstream_changed():
 
 
 @when('nginx.available')
-@when_not('endpoint.upstream.available', 'gateway.no-upstream')
+@when_not('endpoint.upstream.available',
+          'gateway.no-upstream')
 def no_upstream():
     clean_nginx()
     update_nginx()
     data_changed('upstream.services', [])
     set_flag('gateway.no-upstream')
+
+
+########################################################################
+# Upstream
+########################################################################
+
+
+@when('endpoint.upstream.available',
+      'endpoint.website.available')
+def publish_website_info():
+    website = endpoint_from_flag('endpoint.website.available')
+    website.publish_info(80)
 
 
 ########################################################################
