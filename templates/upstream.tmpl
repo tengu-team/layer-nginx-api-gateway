@@ -1,5 +1,0 @@
-upstream {{upstream}}{
-{%- for service in services %}
-        server {{ service["hostname"] }}:{{ service["port"] }};
-{%- endfor %}
-}

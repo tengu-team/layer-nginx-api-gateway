@@ -7,9 +7,6 @@ description: |
 tags:
   - misc
 subordinate: false
-provides:
-  website:
-    interface: http
 requires:
   upstream:
     interface: upstream

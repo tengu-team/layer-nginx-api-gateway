@@ -16,6 +16,8 @@ from charms.reactive.flags import get_flags
 @when_not('gateway.setup')
 def init_gateway():
     configure_exact_server_names()
+    if not os.path.exists('/etc/nginx/sites-available/juju'):
+        os.mkdir('/etc/nginx/sites-available/juju')
     set_flag('gateway.setup')
 
 
@@ -42,19 +44,37 @@ def upstream_changed():
     clear_flag('gateway.no-upstream')
     endpoint = endpoint_from_flag('endpoint.upstream.new-upstream')
     clear_flag('endpoint.upstream.new-upstream')
-    upstreams = endpoint.get_upstreams()
-    if not data_changed('upstreams.services', upstreams):
+    nginx_configs = endpoint.get_nginx_configs()
+    nginx_locations = endpoint.get_nginx_locations()
+    if not data_changed('upstreams.nginx_configs', nginx_configs) \
+       and not data_changed('upstreams.nginx_locations', nginx_locations):
         return
     clean_nginx()
-    for upstream in upstreams:
-        if not upstream['nginx_config']:
+    # Create nginx_config files ex. Upstream blocks
+    for config in nginx_configs:
+        if not config['nginx_config']:
             continue
-        unit = upstream['remote_unit_name'].split('/')[0]
-        with open('/etc/nginx/sites-available/' + unit, 'w+') as f:
-            f.write(upstream['nginx_config'])
+        unit = config['remote_unit_name'].split('/')[0]
+        with open('/etc/nginx/sites-available/juju/' + unit + '-upstreams', 'w+') as f:
+            f.write(config['nginx_config'])
+    # Create a nginx server block
+    track_units = []
+    non_duplicate_locations = []
+    for location in nginx_locations:
+        if not location['location_config']:
+            continue
+        unit = location['remote_unit_name'].split('/')[0]
+        if unit not in track_units:
+            track_units.append(unit)
+            non_duplicate_locations.append(location['location_config'])
+    templating.render(source='server.tmpl',
+                      target='/etc/nginx/sites-available/juju/server',
+                      context={
+                          'locations': non_duplicate_locations
+                      })
     # Create symb links to /sites-enabled
-    for file in os.listdir('/etc/nginx/sites-available'):
-        os.symlink('/etc/nginx/sites-available/' + file, '/etc/nginx/sites-enabled/' + file)
+    for file in os.listdir('/etc/nginx/sites-available/juju'):
+        os.symlink('/etc/nginx/sites-available/juju/' + file, '/etc/nginx/sites-enabled/' + file)
     if not update_nginx():
         log("UPDATE NGINX FAILED")
         return
@@ -72,11 +92,12 @@ def no_upstream():
 
 
 ########################################################################
-# Upstream
+# HTTP
 ########################################################################
 
 
-@when('endpoint.upstream.available',
+@when('nginx.available',
+      'endpoint.upstream.available',
       'endpoint.website.available')
 def publish_website_info():
     website = endpoint_from_flag('endpoint.website.available')
@@ -89,13 +110,10 @@ def publish_website_info():
 
 
 def clean_nginx():
-    # Remove all symb links in /sites-enabled
-    for file in os.listdir('/etc/nginx/sites-enabled'):
+    # Remove all juju symb links in /sites-enabled and /sites-available/juju
+    for file in os.listdir('/etc/nginx/sites-available/juju'):
         os.unlink('/etc/nginx/sites-enabled/' + file)
-    # Remove all config files from /sites-available
-    for file in os.listdir('/etc/nginx/sites-available'):
-        os.remove('/etc/nginx/sites-available/' + file)
-    configure_exact_server_names()  # Restore defautl config
+        os.remove('/etc/nginx/sites-available/juju/' + file)            
 
 
 def update_nginx():
@@ -120,15 +138,15 @@ def update_nginx():
 
 def configure_exact_server_names():
     if config().get('exact-server-names'):
-        if not os.path.exists('/etc/nginx/sites-available/exact-server-names'):
+        if not os.path.exists('/etc/nginx/sites-available/__exact-server-names'):
             templating.render(source="exact-server-names.tmpl",
-                              target="/etc/nginx/sites-available/exact-server-names",
+                              target="/etc/nginx/sites-available/__exact-server-names",
                               context={})
-            os.symlink('/etc/nginx/sites-available/exact-server-names',
-                       '/etc/nginx/sites-enabled/exact-server-names')
+            os.symlink('/etc/nginx/sites-available/__exact-server-names',
+                       '/etc/nginx/sites-enabled/__exact-server-names')
     else:
-        if os.path.exists('/etc/nginx/sites-enabled/exact-server-names'):
-            os.unlink('/etc/nginx/sites-enabled/exact-server-names')
-        if os.path.exists('/etc/nginx/sites-available/exact-server-names'):
-            os.remove('/etc/nginx/sites-available/exact-server-names')
+        if os.path.exists('/etc/nginx/sites-enabled/__exact-server-names'):
+            os.unlink('/etc/nginx/sites-enabled/__exact-server-names')
+        if os.path.exists('/etc/nginx/sites-available/__exact-server-names'):
+            os.remove('/etc/nginx/sites-available/__exact-server-names')
     update_nginx()

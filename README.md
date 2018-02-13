@@ -1,5 +1,3 @@
-
-
 # Overview
 This charm installs and configures [NGINX](https://nginx.org/en/). You can send (NGINX) config files to this charm and NGINX will be updated to add / remove these configurations. You can use this to expose microservices using an API gateway via Juju charms.
 
@@ -11,6 +9,11 @@ Deploy the gateway with the following:
 Add a relation with a charm that provides an [upstream](https://github.com/tengu-team/interface-upstream) interface.
 
 `juju add-relation nginx-api-gateway service`
+
+# Default behaviour
+- All nginx [location](http://nginx.org/en/docs/http/ngx_http_core_module.html#location) blocks will be merged into a single server block in `/etc/nginx/sites-available/juju/server`.
+- Other configuration will be saved with the suffix `-upstream` in `/etc/nginx/sites-available/juju`.
+- Do not store manual configurations in `/etc/nginx/sites-available/juju`. Configs will be removed when an upstream relation is changed. 
 
 # Configuration
 
