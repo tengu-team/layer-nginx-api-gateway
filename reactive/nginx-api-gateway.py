@@ -67,11 +67,12 @@ def upstream_changed():
         if unit not in track_units:
             track_units.append(unit)
             non_duplicate_locations.append(location['location_config'])
-    templating.render(source='server.tmpl',
-                      target='/etc/nginx/sites-available/juju/server',
-                      context={
-                          'locations': non_duplicate_locations
-                      })
+    if non_duplicate_locations:
+        templating.render(source='server.tmpl',
+                        target='/etc/nginx/sites-available/juju/server',
+                        context={
+                            'locations': non_duplicate_locations
+                        })
     # Create symb links to /sites-enabled
     for file in os.listdir('/etc/nginx/sites-available/juju'):
         os.symlink('/etc/nginx/sites-available/juju/' + file, '/etc/nginx/sites-enabled/' + file)
