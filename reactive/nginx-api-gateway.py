@@ -39,7 +39,8 @@ def configure_nginx():
 ########################################################################
 
 
-@when_any('endpoint.upstream.new-upstream')
+@when('endpoint.upstream.new-upstream',
+      'gateway.setup')
 def upstream_changed():
     clear_flag('gateway.no-upstream')
     endpoint = endpoint_from_flag('endpoint.upstream.new-upstream')
@@ -82,7 +83,8 @@ def upstream_changed():
     status_set('active', 'ready')
 
 
-@when('nginx.available')
+@when('nginx.available',
+      'gateway.setup')
 @when_not('endpoint.upstream.available',
           'gateway.no-upstream')
 def no_upstream():
