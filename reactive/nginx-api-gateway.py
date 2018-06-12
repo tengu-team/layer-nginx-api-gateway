@@ -68,8 +68,8 @@ def upstream_changed():
                             'locations': non_duplicate_locations
                         })
     # Create symb links to /sites-enabled
-    for file in os.listdir('/etc/nginx/sites-available/juju'):
-        os.symlink('/etc/nginx/sites-available/juju/' + file, '/etc/nginx/sites-enabled/' + file)
+    for f in os.listdir('/etc/nginx/sites-available/juju'):
+        os.symlink('/etc/nginx/sites-available/juju/' + f, '/etc/nginx/sites-enabled/' + f)
     if not update_nginx():
         log("UPDATE NGINX FAILED")
         return
@@ -107,9 +107,9 @@ def publish_website_info():
 
 def clean_nginx():
     # Remove all juju symb links in /sites-enabled and /sites-available/juju
-    for file in os.listdir('/etc/nginx/sites-available/juju'):
-        os.unlink('/etc/nginx/sites-enabled/' + file)
-        os.remove('/etc/nginx/sites-available/juju/' + file)            
+    for f in os.listdir('/etc/nginx/sites-available/juju'):
+        os.unlink('/etc/nginx/sites-enabled/' + f)
+        os.remove('/etc/nginx/sites-available/juju/' + f)            
 
 
 def update_nginx():
