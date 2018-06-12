@@ -101,10 +101,10 @@ def no_upstream():
 
 @when('nginx.available',
       'endpoint.upstream.available',
-      'endpoint.website.available')
+      'website.available')
 def publish_website_info():
-    website = endpoint_from_flag('endpoint.website.available')
-    website.publish_info(80)
+    website = endpoint_from_flag('website.available')
+    website.configure(80)
 
 
 ########################################################################
