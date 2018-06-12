@@ -15,7 +15,6 @@ from charms.reactive.flags import get_flags
 @when('nginx.available')
 @when_not('gateway.setup')
 def init_gateway():
-    configure_exact_server_names()
     if not os.path.exists('/etc/nginx/sites-available/juju'):
         os.mkdir('/etc/nginx/sites-available/juju')
     set_flag('gateway.setup')
@@ -26,12 +25,6 @@ def init_gateway():
 def configure_gateway():
     website = endpoint_from_flag('website.available')
     website.configure(port=config().get('port'))
-
-
-@when('gateway.setup',
-      'config.changed.exact-server-names')
-def configure_nginx():
-    configure_exact_server_names()
 
 
 ########################################################################
@@ -137,19 +130,3 @@ def update_nginx():
         status_set('blocked', 'Error reloading NGINX')
         return False
     return True
-
-
-def configure_exact_server_names():
-    if config().get('exact-server-names'):
-        if not os.path.exists('/etc/nginx/sites-available/__exact-server-names'):
-            templating.render(source="exact-server-names.tmpl",
-                              target="/etc/nginx/sites-available/__exact-server-names",
-                              context={})
-            os.symlink('/etc/nginx/sites-available/__exact-server-names',
-                       '/etc/nginx/sites-enabled/__exact-server-names')
-    else:
-        if os.path.exists('/etc/nginx/sites-enabled/__exact-server-names'):
-            os.unlink('/etc/nginx/sites-enabled/__exact-server-names')
-        if os.path.exists('/etc/nginx/sites-available/__exact-server-names'):
-            os.remove('/etc/nginx/sites-available/__exact-server-names')
-    update_nginx()
