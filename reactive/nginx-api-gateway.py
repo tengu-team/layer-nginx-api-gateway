@@ -15,16 +15,11 @@ from charms.reactive.flags import get_flags
 @when('nginx.available')
 @when_not('gateway.setup')
 def init_gateway():
+    if os.path.exists('/etc/nginx/sites-enabled/default'):
+        os.remove('/etc/nginx/sites-enabled/default')
     if not os.path.exists('/etc/nginx/sites-available/juju'):
         os.mkdir('/etc/nginx/sites-available/juju')
     set_flag('gateway.setup')
-
-
-@when('nginx.available',
-      'website.available')
-def configure_gateway():
-    website = endpoint_from_flag('website.available')
-    website.configure(port=config().get('port'))
 
 
 ########################################################################
@@ -93,11 +88,10 @@ def no_upstream():
 
 
 @when('nginx.available',
-      'endpoint.upstream.available',
       'website.available')
-def publish_website_info():
+def configure_gateway_http():
     website = endpoint_from_flag('website.available')
-    website.configure(80)
+    website.configure(port=config().get('port'))
 
 
 ########################################################################
