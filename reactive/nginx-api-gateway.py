@@ -102,8 +102,9 @@ def configure_gateway_http():
 def clean_nginx():
     # Remove all juju symb links in /sites-enabled and /sites-available/juju
     for f in os.listdir('/etc/nginx/sites-available/juju'):
-        os.unlink('/etc/nginx/sites-enabled/' + f)
-        os.remove('/etc/nginx/sites-available/juju/' + f)            
+        if os.path.exists('/etc/nginx/sites-enabled/' + f):
+            os.unlink('/etc/nginx/sites-enabled/' + f)
+        os.remove('/etc/nginx/sites-available/juju/' + f)
 
 
 def update_nginx():
