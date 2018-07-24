@@ -19,6 +19,15 @@ def init_gateway():
         os.remove('/etc/nginx/sites-enabled/default')
     if not os.path.exists('/etc/nginx/sites-available/juju'):
         os.mkdir('/etc/nginx/sites-available/juju')
+    if not os.path.exists('/etc/nginx/streams-available/juju'):
+        os.makedirs('/etc/nginx/streams-available/juju')
+    if not os.path.exists('/etc/nginx/streams-enabled'):
+        os.makedirs('/etc/nginx/streams-enabled')
+    # Append stream config block to /etc/nginx/nginx.conf
+    with open("/etc/nginx/nginx.conf", "a") as f:
+        f.writelines(['stream {\n',
+                      '\tinclude /etc/nginx/streams-enabled/*;\n',
+                      '}'])
     set_flag('gateway.setup')
 
 
@@ -35,36 +44,28 @@ def upstream_changed():
     clear_flag('endpoint.upstream.new-upstream')
     nginx_configs = endpoint.get_nginx_configs()
     nginx_locations = endpoint.get_nginx_locations()
-    if not data_changed('upstreams.nginx_configs', nginx_configs) \
-       and not data_changed('upstreams.nginx_locations', nginx_locations):
+    nginx_streams = endpoint.get_nginx_streams()
+    if (not data_changed('upstreams.nginx_configs', nginx_configs)
+       and not data_changed('upstreams.nginx_locations', nginx_locations)
+       and not data_changed('upstreams.nginx_streams', nginx_streams)):
         return
     clean_nginx()
-    # Create nginx_config files ex. Upstream blocks
-    for config in nginx_configs:
-        if not config['nginx_config']:
-            continue
-        unit = config['remote_unit_name'].split('/')[0]
-        with open('/etc/nginx/sites-available/juju/' + unit + '-upstreams', 'w+') as f:
-            f.write(config['nginx_config'])
-    # Create a nginx server block
-    track_units = []
-    non_duplicate_locations = []
-    for location in nginx_locations:
-        if not location['location_config']:
-            continue
-        unit = location['remote_unit_name'].split('/')[0]
-        if unit not in track_units:
-            track_units.append(unit)
-            non_duplicate_locations.append(location['location_config'])
-    if non_duplicate_locations:
-        templating.render(source='server.tmpl',
-                        target='/etc/nginx/sites-available/juju/server',
-                        context={
-                            'locations': non_duplicate_locations
-                        })
-    # Create symb links to /sites-enabled
+    # Create nginx_config files (ex. Upstream blocks)
+    create_nginx_config(nginx_configs)
+    # Create a default nginx server block
+    # Only one location block per juju application name is currently possible
+    # If multple units of the same juju app send different location blocks, 
+    # only one will be configured !
+    create_location_config(nginx_locations)
+    # Create streams config
+    create_streams_config(nginx_streams)
+    # Create symb links to /sites-enabled and /streams-enabled
     for f in os.listdir('/etc/nginx/sites-available/juju'):
-        os.symlink('/etc/nginx/sites-available/juju/' + f, '/etc/nginx/sites-enabled/' + f)
+        os.symlink('/etc/nginx/sites-available/juju/' + f,
+                   '/etc/nginx/sites-enabled/' + f)
+    for f in os.listdir('/etc/nginx/streams-available/juju'):
+        os.symlink('/etc/nginx/streams-available/juju/' + f, 
+                   '/etc/nginx/streams-enabled/' + f)
     if not update_nginx():
         log("UPDATE NGINX FAILED")
         return
@@ -80,6 +81,42 @@ def no_upstream():
     update_nginx()
     data_changed('upstream.services', [])
     set_flag('gateway.no-upstream')
+
+
+def create_nginx_config(nginx_configs):
+    for config in nginx_configs:
+        if not config['nginx_config']:
+            continue
+        unit = config['remote_unit_name'].split('/')[0]
+        with open('/etc/nginx/sites-available/juju/' + unit + '-upstreams', 'w+') as f:
+            f.write(config['nginx_config'])
+
+
+def create_location_config(nginx_locations):
+    track_units = []
+    non_duplicate_locations = []
+    for location in nginx_locations:
+        if not location['location_config']:
+            continue
+        unit = location['remote_unit_name'].split('/')[0]
+        if unit not in track_units:
+            track_units.append(unit)
+            non_duplicate_locations.append(location['location_config'])
+    if non_duplicate_locations:
+        templating.render(source='server.tmpl',
+                        target='/etc/nginx/sites-available/juju/server',
+                        context={
+                            'locations': non_duplicate_locations
+                        })
+
+
+def create_streams_config(nginx_streams):
+    for stream in nginx_streams:
+        if not stream['stream_config']:
+            continue
+        unit = stream['remote_unit_name'].split('/')[0]
+        with open('/etc/nginx/streams-available/juju/' + unit, 'w') as f:
+            f.write(stream['stream_config'])
 
 
 ########################################################################
@@ -100,11 +137,19 @@ def configure_gateway_http():
 
 
 def clean_nginx():
-    # Remove all juju symb links in /sites-enabled and /sites-available/juju
+    # Remove all juju symb links / files in
+    #   - /sites-enabled
+    #   - /sites-available/juju
+    #   - /streams-enabled
+    #   - /streams-available/juju
     for f in os.listdir('/etc/nginx/sites-available/juju'):
         if os.path.exists('/etc/nginx/sites-enabled/' + f):
             os.unlink('/etc/nginx/sites-enabled/' + f)
         os.remove('/etc/nginx/sites-available/juju/' + f)
+    for f in os.listdir('/etc/nginx/streams-available/juju'):
+        if os.path.exists('/etc/nginx/streams-enabled' + f):
+            os.unlink('/etc/nginx/streams-enabled' + f)
+        os.remove('/etc/nginx/streams-available/juju/' + f)
 
 
 def update_nginx():
