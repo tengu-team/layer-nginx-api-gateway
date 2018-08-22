@@ -11,9 +11,8 @@ Add a relation with a charm that provides an [upstream](https://github.com/tengu
 `juju add-relation nginx-api-gateway service`
 
 # Default behaviour
-- All nginx [location](http://nginx.org/en/docs/http/ngx_http_core_module.html#location) blocks will be merged into a single server block in `/etc/nginx/sites-available/juju/server`.
-- Other configuration will be saved with the suffix `-upstream` in `/etc/nginx/sites-available/juju`.
-- Do not store manual configurations in `/etc/nginx/sites-available/juju`. Configs will be removed when an upstream relation is changed. 
+- All nginx [location](http://nginx.org/en/docs/http/ngx_http_core_module.html#location) blocks will be merged into a single server block in `/etc/nginx/juju/{juju-application-name-unitnr}/nginx-api-gateway/sites-available/upstream/server-upstream`.
+- Do not store manual configurations in `/etc/nginx/juju`. Configs can be removed when an upstream relation is changed.
 
 ## Authors
 
